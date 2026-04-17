@@ -1,14 +1,8 @@
 # h5p2html + WordPress (Docker, exportacao 1 por 1)
 
-Projeto para converter arquivos `.h5p` em HTML all-in-one com imagem baseada em PHP, pensado para integracao com WordPress e armazenamento tecnico fora do docroot.
+Projeto para converter arquivos `.h5p` em HTML all-in-one com imagem baseada em PHP, pensado para integracao com WordPress e armazenamento tecnico.
 
-## Decisao de arquitetura
-
-- Exportacao somente individual (um arquivo por vez).
-- Entrada e saida por full path, sem depender de caminhos fixos do WordPress.
-- Saida recomendada fora de `/var/www/html` para evitar acesso HTTP direto.
-
-## O que foi preparado
+## O que existe nele
 
 - `Dockerfile` com base `php:8.2-cli-bookworm`.
 - Instalacao automatica de Node.js 20 + dependencias npm.
