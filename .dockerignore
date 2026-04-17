@@ -1,0 +1,11 @@
+node_modules/
+.git/
+
+*.html
+out/
+
+content/
+h5p/
+
+.vscode/
+.idea/

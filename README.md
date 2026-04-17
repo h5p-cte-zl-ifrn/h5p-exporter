@@ -47,6 +47,33 @@ npm install
 node cli.js "caminho/arquivo.h5p" -o "saida/arquivo.html" --lang pt
 ```
 
+### Via Docker (conversao em lote)
+
+1. Coloque os arquivos `.h5p` em `content/`.
+2. Rode o build da imagem:
+
+```bash
+docker compose build
+```
+
+3. Rode a conversao:
+
+```bash
+docker compose run --rm h5p2html
+```
+
+4. Os `.html` gerados aparecerao em `out/`.
+
+Esse fluxo converte automaticamente todos os arquivos `.h5p` encontrados em `content/`.
+
+### Via Docker (arquivo unico)
+
+Tambem e possivel converter um arquivo especifico sem depender do lote:
+
+```bash
+docker compose run --rm h5p2html /data/in/meu-livro.h5p -o /data/out/meu-livro.html --lang pt
+```
+
 ### Como comando CLI (global local)
 
 ```bash
@@ -61,6 +88,12 @@ h5p2html "caminho/arquivo.h5p" -o "saida/arquivo.html" --lang pt
 - `--lang` (opcional): idioma do bundle (padrao: `pt`)
 
 Se `-o` nao for informado, o nome de saida sera `<nome-do-arquivo>.html` na pasta atual.
+
+No Docker (modo lote), os parametros sao controlados por variaveis no `docker-compose.yml`:
+
+- `INPUT_DIR` (padrao: `/data/in`)
+- `OUTPUT_DIR` (padrao: `/data/out`)
+- `BUNDLE_LANG` (padrao: `pt`)
 
 ## Exemplo rapido (Windows PowerShell)
 
@@ -89,6 +122,8 @@ Copy-Item ".tmp-download/editor/h5p-editor-php-library-$EDITOR_VER/*" .\h5p\edit
 Remove-Item .tmp-download -Recurse -Force
 ```
 
+Se estiver usando Docker, esse setup manual nao e necessario: o `Dockerfile` baixa `h5p/core` e `h5p/editor` automaticamente durante o build da imagem.
+
 ## Solucao de problemas
 
 - Erro de whitelist (`not-in-whitelist`): ajuste `contentWhitelist` em `config.json` para incluir extensoes usadas pelo pacote.
@@ -100,3 +135,6 @@ Remove-Item .tmp-download -Recurse -Force
 - `@lumieducation/h5p-server`
 - `@lumieducation/h5p-html-exporter`
 
+## Licenca
+
+ISC

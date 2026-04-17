@@ -1,0 +1,16 @@
+services:
+  h5p2html:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        H5P_CORE_VERSION: wp-1.16.0
+        H5P_EDITOR_VERSION: wp-1.16.0
+    image: cli-hpo:h5p2html
+    environment:
+      INPUT_DIR: /data/in
+      OUTPUT_DIR: /data/out
+      BUNDLE_LANG: pt
+    volumes:
+      - ./content:/data/in:ro
+      - ./out:/data/out
