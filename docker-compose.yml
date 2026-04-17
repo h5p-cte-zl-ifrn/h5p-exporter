@@ -1,16 +1,55 @@
 services:
-  h5p2html:
+  db:
+    image: mysql:8.0
+    container_name: wp-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - db_data:/var/lib/mysql
+
+  wordpress:
+    image: wordpress:php8.2-apache
+    container_name: wordpress
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wordpress_data:/var/www/html
+      - ./data:/data
+
+  h5p-exporter:
     build:
       context: .
       dockerfile: Dockerfile
       args:
+        NODE_MAJOR: 20
         H5P_CORE_VERSION: wp-1.16.0
         H5P_EDITOR_VERSION: wp-1.16.0
-    image: cli-hpo:h5p2html
+    image: h5p-exporter:php-node
+    container_name: h5p-exporter
+    working_dir: /app
+    depends_on:
+      - wordpress
     environment:
-      INPUT_DIR: /data/in
-      OUTPUT_DIR: /data/out
+      APP_DIR: /app
+      NODE_EXPORTER_SCRIPT: /app/exporter/export-h5p.mjs
       BUNDLE_LANG: pt
     volumes:
-      - ./content:/data/in:ro
-      - ./out:/data/out
+      - ./data:/data
+      - wordpress_data:/var/www/html
+    command: ["php", "/app/bin/export-one.php"]
+
+volumes:
+  db_data:
+  wordpress_data:

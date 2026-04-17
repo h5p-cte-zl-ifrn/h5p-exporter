@@ -1,23 +1,23 @@
-# h5p2html CLI
+# h5p2html + WordPress (Docker, exportacao 1 por 1)
 
-CLI em Node.js para converter arquivos `.h5p` em um unico arquivo HTML (all-in-one), usando as libs oficiais da Lumi Education.
+Projeto para converter arquivos `.h5p` em HTML all-in-one com imagem baseada em PHP, pensado para integracao com WordPress e armazenamento tecnico fora do docroot.
 
-## O que este projeto faz
+## Decisao de arquitetura
 
-- Recebe um arquivo `.h5p` (ex.: Interactive Book).
-- Importa o pacote e resolve as bibliotecas necessarias.
-- Gera um HTML unico com CSS/JS/assets embutidos.
-- Salva o arquivo final no caminho informado com `-o`.
+- Exportacao somente individual (um arquivo por vez).
+- Entrada e saida por full path, sem depender de caminhos fixos do WordPress.
+- Saida recomendada fora de `/var/www/html` para evitar acesso HTTP direto.
 
-## Requisitos
+## O que foi preparado
 
-- Node.js 18+ (recomendado 20+)
-- npm
-- Pastas de runtime H5P presentes no projeto:
-  - `h5p/core`
-  - `h5p/editor`
+- `Dockerfile` com base `php:8.2-cli-bookworm`.
+- Instalacao automatica de Node.js 20 + dependencias npm.
+- Download automatico de `h5p/core` e `h5p/editor` no build.
+- Script PHP unico para exportacao individual: `bin/export-one.php`.
+- Wrapper Node: `exporter/export-h5p.mjs` (chama `cli.js`).
+- `docker-compose.yml` com `db`, `wordpress` e `h5p-exporter`.
 
-## Estrutura essencial
+## Estrutura principal
 
 ```text
 .
@@ -25,116 +25,87 @@ CLI em Node.js para converter arquivos `.h5p` em um unico arquivo HTML (all-in-o
 |- config.json
 |- package.json
 |- package-lock.json
-|- h5p/
-|  |- core/
-|  `- editor/
-`- content/            (opcional, para guardar .h5p de exemplo)
+|- Dockerfile
+|- docker-compose.yml
+|- exporter/
+|  `- export-h5p.mjs
+`- bin/
+   `- export-one.php
 ```
 
-Observacao: o CLI usa pasta temporaria do sistema para processamento e limpa no final. Nao mantem cache local de `libraries/content/tmp/user-data` no projeto.
+## Como funciona
 
-## Instalacao
+- Voce chama `php /app/bin/export-one.php <input.h5p> <output.html> [lang]`.
+- O PHP valida input/output e cria o diretorio de saida se necessario.
+- O PHP chama `node /app/exporter/export-h5p.mjs`.
+- O `export-h5p.mjs` chama `cli.js`, que gera o HTML all-in-one.
 
-```bash
-npm install
-```
+## Variaveis de ambiente relevantes
 
-## Como usar
-
-### Via Node
-
-```bash
-node cli.js "caminho/arquivo.h5p" -o "saida/arquivo.html" --lang pt
-```
-
-### Via Docker (conversao em lote)
-
-1. Coloque os arquivos `.h5p` em `content/`.
-2. Rode o build da imagem:
-
-```bash
-docker compose build
-```
-
-3. Rode a conversao:
-
-```bash
-docker compose run --rm h5p2html
-```
-
-4. Os `.html` gerados aparecerao em `out/`.
-
-Esse fluxo converte automaticamente todos os arquivos `.h5p` encontrados em `content/`.
-
-### Via Docker (arquivo unico)
-
-Tambem e possivel converter um arquivo especifico sem depender do lote:
-
-```bash
-docker compose run --rm h5p2html /data/in/meu-livro.h5p -o /data/out/meu-livro.html --lang pt
-```
-
-### Como comando CLI (global local)
-
-```bash
-npm link
-h5p2html "caminho/arquivo.h5p" -o "saida/arquivo.html" --lang pt
-```
-
-## Parametros
-
-- `input` (obrigatorio): caminho do arquivo `.h5p`
-- `-o`, `--out` (opcional): caminho do HTML de saida
-- `--lang` (opcional): idioma do bundle (padrao: `pt`)
-
-Se `-o` nao for informado, o nome de saida sera `<nome-do-arquivo>.html` na pasta atual.
-
-No Docker (modo lote), os parametros sao controlados por variaveis no `docker-compose.yml`:
-
-- `INPUT_DIR` (padrao: `/data/in`)
-- `OUTPUT_DIR` (padrao: `/data/out`)
+- `NODE_EXPORTER_SCRIPT` (padrao: `/app/exporter/export-h5p.mjs`)
 - `BUNDLE_LANG` (padrao: `pt`)
+- `APP_DIR` (padrao no compose: `/app`)
 
-## Exemplo rapido (Windows PowerShell)
+## Passo a passo (Docker)
 
-```powershell
-node .\cli.js ".\content\customizable-interactive-book-249.h5p" -o ".\interactive-book-final.html" --lang pt
+1. Inicie Docker Desktop.
+2. Crie pastas tecnicas locais (exemplo):
+
+```bash
+mkdir -p data/h5p/exports
+mkdir -p data/private/h5p-html
 ```
 
-## Setup inicial do runtime H5P (se necessario)
+3. Coloque o `.h5p` em `data/h5p/exports`.
+4. Suba banco e WordPress (se quiser stack completa):
 
-Se voce clonar o projeto em outra maquina e nao tiver `h5p/core` e `h5p/editor`, rode:
-
-```powershell
-$CORE_VER = (Invoke-RestMethod https://api.github.com/repos/h5p/h5p-php-library/tags)[0].name
-$EDITOR_VER = (Invoke-RestMethod https://api.github.com/repos/h5p/h5p-editor-php-library/tags)[0].name
-
-New-Item -ItemType Directory -Force -Path .tmp-download/core, .tmp-download/editor | Out-Null
-
-Invoke-WebRequest "https://github.com/h5p/h5p-php-library/archive/refs/tags/$CORE_VER.zip" -OutFile .tmp-download/core.zip
-Expand-Archive .tmp-download/core.zip .tmp-download/core -Force
-Copy-Item ".tmp-download/core/h5p-php-library-$CORE_VER/*" .\h5p\core -Recurse -Force
-
-Invoke-WebRequest "https://github.com/h5p/h5p-editor-php-library/archive/refs/tags/$EDITOR_VER.zip" -OutFile .tmp-download/editor.zip
-Expand-Archive .tmp-download/editor.zip .tmp-download/editor -Force
-Copy-Item ".tmp-download/editor/h5p-editor-php-library-$EDITOR_VER/*" .\h5p\editor -Recurse -Force
-
-Remove-Item .tmp-download -Recurse -Force
+```bash
+docker compose up -d db wordpress
 ```
 
-Se estiver usando Docker, esse setup manual nao e necessario: o `Dockerfile` baixa `h5p/core` e `h5p/editor` automaticamente durante o build da imagem.
+5. Build da imagem do exporter:
 
-## Solucao de problemas
+```bash
+docker compose build h5p-exporter
+```
 
-- Erro de whitelist (`not-in-whitelist`): ajuste `contentWhitelist` em `config.json` para incluir extensoes usadas pelo pacote.
-- Erro de pasta ausente: confira se `h5p/core` e `h5p/editor` existem.
-- Pacotes muito grandes podem gerar HTML final grande (isso e esperado em all-in-one).
+6. Rode exportacao individual (full path de entrada e saida):
 
-## Stack
+```bash
+docker compose run --rm h5p-exporter \
+  php /app/bin/export-one.php \
+  /data/h5p/exports/meu-livro.h5p \
+  /data/private/h5p-html/meu-livro.html \
+  pt
+```
 
-- `@lumieducation/h5p-server`
-- `@lumieducation/h5p-html-exporter`
+## Importante sobre seguranca
 
-## Licenca
+- Para evitar download direto por URL, mantenha a saida fora de `/var/www/html`.
+- Exemplo seguro: `/data/private/h5p-html/...`.
+- O software autenticado (plugin/API) decide quando e como servir esse arquivo.
 
-ISC
+## Comandos uteis
+
+- Validar compose:
+
+```bash
+docker compose config
+```
+
+- Ver logs WordPress:
+
+```bash
+docker compose logs -f wordpress
+```
+
+- Parar stack:
+
+```bash
+docker compose down
+```
+
+## Observacoes
+
+- O conversor limpa diretorios temporarios ao fim de cada execucao.
+- Se aparecer erro de whitelist, ajuste `contentWhitelist` em `config.json`.

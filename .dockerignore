@@ -5,6 +5,7 @@ node_modules/
 out/
 
 content/
+data/
 h5p/
 
 .vscode/
