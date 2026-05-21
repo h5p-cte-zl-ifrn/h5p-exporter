@@ -1,0 +1,12 @@
+node_modules/
+.git/
+
+*.html
+out/
+
+content/
+data/
+h5p/
+
+.vscode/
+.idea/
